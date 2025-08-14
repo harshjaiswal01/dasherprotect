@@ -1,0 +1,33 @@
+name: pwa-ci
+on:
+  pull_request:
+    paths: ['pwa/**', '.github/workflows/pwa-ci.yml']
+  push:
+    branches: [ main ]
+    paths: ['pwa/**']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: pwa/package-lock.json
+      - name: Install
+        working-directory: pwa
+        run: npm ci
+      - name: Type check
+        working-directory: pwa
+        run: npx tsc --noEmit
+      - name: Build
+        working-directory: pwa
+        run: npm run build
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./pwa
+          push: false
+          tags: ghcr.io/${{ github.repository_owner }}/dasherprotect-pwa:ci-${{ github.sha }}
