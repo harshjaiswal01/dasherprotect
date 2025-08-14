@@ -1,0 +1,36 @@
+name: release-images
+on:
+  push:
+    tags: ['v*.*.*']
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/dasherprotect-backend:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/dasherprotect-backend:latest
+
+      - name: Build & push pwa
+        uses: docker/build-push-action@v6
+        with:
+          context: ./pwa
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/dasherprotect-pwa:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/dasherprotect-pwa:latest
