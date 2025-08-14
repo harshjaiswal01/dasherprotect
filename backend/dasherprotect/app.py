@@ -1,46 +1,75 @@
+# backend/dasherprotect/app.py
 """
-Dasher Protect — Flask application factory.
+Dasher Protect — Flask application factory (M0)
 
-This is the minimal API surface for M0:
-- /healthz   : liveness probe
-- /readyz    : readiness probe (DB/Redis ping)
-- /docs      : serves Swagger UI based on openapi.yaml
-- /metrics   : Prometheus metrics (basic counter/histogram hooks ready)
-- Socket.IO  : configured and ready to emit events (e.g., 'hit_detected' later)
+Exposes:
+- GET /healthz      : liveness probe
+- GET /readyz       : readiness probe (DB/Redis ping TBD in M1)
+- GET /v1/hello     : simple API smoke check
+- GET /metrics      : Prometheus metrics (stub)
+- GET /openapi.yaml : raw OpenAPI spec
+- GET /docs         : Swagger UI backed by openapi.yaml
 """
+from __future__ import annotations
 
+from pathlib import Path
 from flask import Flask, jsonify, Response
 from flask_cors import CORS
-from .extensions import db, socketio, prometheus_metrics, swagger_ui_blueprint
+
 from .config import load_config
-from .routes import bp as api_bp
+from .extensions import (
+    db,
+    socketio,
+    prometheus_metrics,   # simple shim we added for M0
+    init_swagger_ui,      # mounts /docs and serves /openapi.yaml
+)
+
+# repository /backend path (where openapi.yaml lives)
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    CORS(app)  # allow all origins for now (dev only)
+
+    # ---- Config (reads DATABASE_URL / SECRET_KEY / REDIS_URL from env/.env) ----
+    # IMPORTANT: must be loaded before initializing extensions like SQLAlchemy.
     app.config.from_mapping(load_config())
 
-    # Init extensions
+    # ---- CORS (dev only; we’ll tighten later) ----
+    CORS(app)
+
+    # ---- Init extensions ----
     db.init_app(app)
-    socketio.init_app(app, cors_allowed_origins="*")  # PWA connects from localhost:5173
+    socketio.init_app(app, cors_allowed_origins="*")
 
-    # Blueprints
-    app.register_blueprint(api_bp, url_prefix="/v1")
-    app.register_blueprint(swagger_ui_blueprint, url_prefix="/docs")
-
-    # Health endpoints
+    # ---- Health / readiness ----
     @app.get("/healthz")
     def healthz():
-        return jsonify(status="ok", name="dasher-protect")
+        return jsonify({"status": "ok"})
 
     @app.get("/readyz")
     def readyz():
-        # In M0 we just return ok; in M1 we'll ping DB/Redis here.
-        return jsonify(ready=True)
+        # M1: add real checks (e.g., db.connect(), redis.ping())
+        return jsonify({"status": "ready"})
 
-    # Prometheus metrics exposition
+    # ---- Simple hello for quick smoke checks ----
+    @app.get("/v1/hello")
+    def hello():
+        return jsonify({"service": "dasher-protect-api", "version": "m0"})
+
+    # ---- Prometheus metrics (stub) ----
     @app.get("/metrics")
     def metrics():
-        return Response(prometheus_metrics.generate_latest(), mimetype=prometheus_metrics.CONTENT_TYPE_LATEST)
+        # prometheus_client generate_latest + correct content-type
+        data = prometheus_metrics.generate_latest()
+        return Response(data, mimetype=prometheus_metrics.CONTENT_TYPE_LATEST)
+
+    # ---- Swagger UI + raw spec ----
+    # Serves /openapi.yaml and a Swagger UI at /docs
+    init_swagger_ui(app, spec_dir=BACKEND_ROOT)
+
+    # ---- Future M1: register API blueprints here ----
+    # from .routes import bp as api_bp
+    # app.register_blueprint(api_bp, url_prefix="/v1")
 
     return app
