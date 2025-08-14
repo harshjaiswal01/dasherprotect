@@ -1,0 +1,12 @@
+Flask==3.0.3            # Minimal REST
+flask-socketio==5.3.6   # Realtime alerts
+eventlet==0.36.1        # Async worker for SocketIO
+Flask-SQLAlchemy==3.1.1    # <— add this (flask integration for SQLAlchemy)
+psycopg[binary]==3.2.1  # PostgreSQL driver
+SQLAlchemy==2.0.32      # ORM
+alembic==1.13.2         # DB migrations
+pgvector==0.3.3         # SQLAlchemy pgvector extension
+gunicorn==22.0.0        # WSGI server
+prometheus-client==0.20.0  # Metrics
+PyYAML==6.0.2           # Load OpenAPI
+Flask-Cors==4.0.0       # enable CORS for the PWA (dev)

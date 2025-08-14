@@ -1,0 +1,23 @@
+openapi: 3.0.3
+info:
+  title: Dasher Protect API
+  version: "0.0.1"
+paths:
+  /healthz:
+    get:
+      summary: Liveness probe
+      responses:
+        "200":
+          description: OK
+  /readyz:
+    get:
+      summary: Readiness probe
+      responses:
+        "200":
+          description: Ready
+  /v1/hello:
+    get:
+      summary: API prefix check
+      responses:
+        "200":
+          description: OK
